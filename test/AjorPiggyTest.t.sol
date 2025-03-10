@@ -17,55 +17,114 @@ contract AjorPiggyTest is Test {
         user2 = makeAddr("user2");
         
         // Deploy the contract
-        ajorPiggy = new AjorPiggy("AjorPiggy", "AJOR");
+        ajorPiggy = new AjorPiggy();
         
         // Fund the test users
         vm.deal(user1, 10 ether);
         vm.deal(user2, 10 ether);
     }
 
-    // Test contract deployment
-    function testDeployment() public view {
-        assertEq(ajorPiggy.name(), "AjorPiggy");
-        assertEq(ajorPiggy.symbol(), "AJOR");
+    function testContribute() public {        
+        vm.startPrank(user1);
+
+        uint256 contributionAmount = 0.001 ether;
+        ajorPiggy.contribute{value: contributionAmount}();
+
+        bool hasContributed = ajorPiggy.hasContributed(user1);
+        assertTrue(hasContributed, "User should have contributed");
+
+        uint256 totalContributions = ajorPiggy.totalContributions();
+        assertEq(totalContributions, contributionAmount, "Total contributions should be updated");
+
+        uint256 balance = address(ajorPiggy).balance;
+        assertEq(balance, contributionAmount, "Contract balance should be updated");
+        
+        vm.stopPrank();
     }
+
+     function testCannotContributeTwice() public {        
+        vm.startPrank(user1);
+
+        uint256 contributionAmount = 0.001 ether;
+        console.log(ajorPiggy.hasContributed(user1));
+        ajorPiggy.contribute{value: contributionAmount}();
+        console.log(ajorPiggy.hasContributed(user1));
+        vm.expectRevert("Already contributed");
+        ajorPiggy.contribute{value: contributionAmount}();
+        vm.stopPrank();
+    }
+
+    function testCannotContributeBelowMinimum() public {        
+        vm.startPrank(user1);
+        uint256 lowContributionAmount = 0.0005 ether;
+        vm.expectRevert("Contribution amount too low");
+        ajorPiggy.contribute{value: lowContributionAmount}();
+
+        vm.stopPrank();
+    }
+
+    function testWithdrawFunds() public {        
+        vm.startPrank(user1);
+
+        uint256 contributionAmount = 0.001 ether;
+        ajorPiggy.contribute{value: contributionAmount}();
+
+        vm.stopPrank();
+        vm.startPrank(owner);
+
+        uint256 initialOwnerBalance = owner.balance;
+        console.log(initialOwnerBalance);
+        ajorPiggy.withdraw();
+
+        uint256 finalOwnerBalance = owner.balance;
+        console.log(finalOwnerBalance);
+        assertEq(finalOwnerBalance, initialOwnerBalance + contributionAmount, "Owner should have withdrawn the funds");
+
+        vm.stopPrank();
+    }
+
+    // Test contract deployment
+    // function testDeployment() public view {
+    //     assertEq(ajorPiggy.name(), "AjorPiggy");
+    //     assertEq(ajorPiggy.symbol(), "AJOR");
+    // }
 
     // Test contribution functionality
-    function testContribution() public {
-        // First contribution should work
+    // function testContribution() public {
+    //     // First contribution should work
        
-        vm.prank(user1);
-        ajorPiggy.contribute{value: 1 ether}();       
+    //     vm.prank(user1);
+    //     ajorPiggy.contribute{value: 1 ether}();       
        
-        assertEq(ajorPiggy.getContractBalance(), 1 ether);
-        assertEq(ajorPiggy.addressToTotalContribution(user1), 1 ether);
-        assertEq(ajorPiggy.totalSupply(), 1);
-        assertEq(ajorPiggy.ownerOf(1), user1);
-        assertEq(ajorPiggy.contributionAmount(1), 1 ether);
-    }
+    //     assertEq(ajorPiggy.getContractBalance(), 1 ether);
+    //     assertEq(ajorPiggy.addressToTotalContribution(user1), 1 ether);
+    //     assertEq(ajorPiggy.totalSupply(), 1);
+    //     assertEq(ajorPiggy.ownerOf(1), user1);
+    //     assertEq(ajorPiggy.contributionAmount(1), 1 ether);
+    // }
 
     // Test receiving ETH directly
-    function testReceiveFunction() public {
-        // Send ETH directly to the contract
-        vm.prank(user1);
-        (bool success,) = address(ajorPiggy).call{value: 1 ether}("");
+    // function testReceiveFunction() public {
+    //     // Send ETH directly to the contract
+    //     vm.prank(user1);
+    //     (bool success,) = address(ajorPiggy).call{value: 1 ether}("");
         
-        assertTrue(success);
-        assertEq(ajorPiggy.getContractBalance(), 1 ether);
-        assertEq(ajorPiggy.totalSupply(), 1);
-    }
+    //     assertTrue(success);
+    //     assertEq(ajorPiggy.getContractBalance(), 1 ether);
+    //     assertEq(ajorPiggy.totalSupply(), 1);
+    // }
 
     // Test that users can't contribute multiple times
-    function testCannotContributeMultipleTimes() public {
-        // First contribution
-        vm.prank(user1);
-        ajorPiggy.contribute{value: 1 ether}();
+    // function testCannotContributeMultipleTimes() public {
+    //     // First contribution
+    //     vm.prank(user1);
+    //     ajorPiggy.contribute{value: 1 ether}();
         
-        // Second contribution should fail
-        vm.prank(user1);
-        ajorPiggy.contribute{value: 1 ether}();
-        vm.expectRevert("Have already contributed");
-    }
+    //     // Second contribution should fail
+    //     vm.prank(user1);
+    //     ajorPiggy.contribute{value: 1 ether}();
+    //     vm.expectRevert("Have already contributed");
+    // }
 
     // Test contribution with zero value
     // function testZeroContribution() public {
